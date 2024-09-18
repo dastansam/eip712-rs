@@ -84,7 +84,7 @@ fn main() {
             let token_stream = TokenStream::from_str(&input).unwrap();
             let ast = parse2(token_stream).unwrap();
             let struct_parser = StructParser::init(&ast).unwrap();
-            let output = struct_parser.generate_file(&cmd.solc);
+            let output = struct_parser.generate_file(&cmd.input, &cmd.solc);
 
             std::fs::write(&cmd.output, output).unwrap();
         }

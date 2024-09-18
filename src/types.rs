@@ -1,50 +1,12 @@
 //! Types used in the CLI.
 
 use std::fmt::Display;
-use syn_solidity::{ArgListImpl, Expr, ItemFunction, Lit, VariableDefinition};
+use syn_solidity::{
+    ArgListImpl, Expr, ExprPostfix, ForInitStmt, ItemFunction, Lit, Stmt, StmtVarDecl, VarDeclDecl,
+    VariableDefinition,
+};
 
 pub(crate) type BytesU32 = std::num::NonZero<u16>;
-
-/// [Display] implementation specifically for handling [Expr]
-pub(crate) fn fmt_call(call: &Expr) -> eyre::Result<String> {
-    match call {
-        Expr::Lit(lit) => match lit {
-            Lit::Str(string) => Ok(format!("\"{}\"", string.to_string())),
-            _ => Err(eyre::Report::msg("Unsupported literal type")),
-        },
-        Expr::Ident(ident) => Ok(ident.to_string()),
-        Expr::Call(call) => {
-            let mut result = String::new();
-            let expr_str = fmt_call(&call.expr)?;
-            result.push_str(&expr_str);
-            result.push('(');
-            if let ArgListImpl::Unnamed(args) = &call.args.list {
-                for (i, arg) in args.iter().enumerate() {
-                    let arg_str = fmt_call(arg)?;
-                    result.push_str(&arg_str);
-                    if i < args.len() - 1 {
-                        result.push(',');
-                        result.push(' ');
-                    }
-                }
-            }
-            result.push(')');
-            Ok(result)
-        }
-        Expr::Member(member) => {
-            let mut result = String::new();
-            let expr_str = fmt_call(&member.expr)?;
-            result.push_str(&expr_str);
-
-            result.push('.');
-
-            let member_str = fmt_call(&member.member)?;
-            result.push_str(&member_str);
-            Ok(result)
-        }
-        _ => Err(eyre::Report::msg("Unsupported expression type")),
-    }
-}
 
 /// To implement `Display` for `VariableDefinition`.
 pub(crate) struct VariableDefinitionWrapper(pub(crate) VariableDefinition);
@@ -54,7 +16,7 @@ impl Display for VariableDefinitionWrapper {
         write!(f, "{} {} {}", self.0.ty, self.0.attributes, self.0.name)?;
         if let Some((_, expr)) = &self.0.initializer {
             write!(f, " = ")?;
-            if let Ok(res) = fmt_call(expr) {
+            if let Ok(res) = fmt_expr(expr) {
                 write!(f, "{}", res)?;
             } else {
                 write!(f, " <expr> ")?;
@@ -94,22 +56,168 @@ impl Display for ItemFunctionWrapper {
             syn_solidity::FunctionBody::Empty(_) => write!(f, ";")?,
             syn_solidity::FunctionBody::Block(block) => {
                 write!(f, "{{")?;
-                for stmt in &block.stmts {
-                    if let syn_solidity::Stmt::Return(inner_return) = stmt {
-                        write!(f, "return ")?;
-                        if let Some(expr) = inner_return.expr.clone() {
-                            if let Ok(res) = fmt_call(&expr) {
-                                write!(f, "{res}")?;
-                            } else {
-                                write!(f, "<expr> ")?;
-                            }
-                        }
+
+                for stmt in block.stmts.iter() {
+                    if let Ok(res) = fmt_stmt(stmt) {
+                        write!(f, "{}", res)?;
                     }
                 }
-                write!(f, "; }}\n")?;
+
+                write!(f, "}}")?;
             }
         }
 
         Ok(())
     }
+}
+
+/// [Display] implementation specifically for handling [Expr]
+pub(crate) fn fmt_expr(call: &Expr) -> eyre::Result<String> {
+    let mut result = String::new();
+    match call {
+        Expr::Lit(lit) => match lit {
+            Lit::Str(string) => result.push_str(&format!("\"{}\"", string.to_string())),
+            _ => return Err(eyre::Report::msg("Unsupported literal type")),
+        },
+        Expr::Ident(ident) => result.push_str(&ident.to_string()),
+        Expr::Call(call) => {
+            let expr_str = fmt_expr(&call.expr)?;
+            result.push_str(&expr_str);
+            result.push('(');
+            if let ArgListImpl::Unnamed(args) = &call.args.list {
+                for (i, arg) in args.iter().enumerate() {
+                    let arg_str = fmt_expr(arg)?;
+                    result.push_str(&arg_str);
+                    if i < args.len() - 1 {
+                        result.push(',');
+                        result.push(' ');
+                    }
+                }
+            }
+            result.push(')');
+        }
+        Expr::Member(member) => {
+            let expr_str = fmt_expr(&member.expr)?;
+            result.push_str(&expr_str);
+
+            result.push('.');
+
+            let member_str = fmt_expr(&member.member)?;
+            result.push_str(&member_str);
+        }
+        Expr::Index(index) => {
+            let expr_str = fmt_expr(&index.expr)?;
+            result.push_str(&expr_str);
+            result.push('[');
+            if let Some(start) = &index.start {
+                result.push_str(&fmt_expr(start).unwrap_or_else(|_| "<expr>".to_string()));
+            }
+            if let Some(_) = &index.colon_token {
+                result.push_str(":");
+            }
+            if let Some(end) = &index.end {
+                result.push_str(&fmt_expr(end).unwrap_or_else(|_| "<expr>".to_string()));
+            }
+
+            result.push(']');
+        }
+        Expr::Binary(binary) => {
+            let left_str = fmt_expr(&binary.left)?;
+            result.push_str(&left_str);
+            result.push_str(&binary.op.to_string());
+            let right_str = fmt_expr(&binary.right)?;
+            result.push_str(&right_str);
+        }
+        Expr::Unary(unary) => {
+            result.push_str(&unary.op.to_string());
+            let expr_str = fmt_expr(&unary.expr)?;
+            result.push_str(&expr_str);
+        }
+        Expr::New(new) => {
+            result.push_str("new ");
+            result.push_str(&new.ty.to_string());
+        }
+        Expr::Postfix(ExprPostfix { expr, op }) => {
+            result.push_str(&fmt_expr(&expr).unwrap_or_else(|_| "<expr>".to_string()));
+            result.push_str(&op.to_string());
+        }
+        _ => return Err(eyre::Report::msg("Unsupported expression type")),
+    }
+
+    Ok(result)
+}
+
+/// Display for `Stmt`
+pub(crate) fn fmt_stmt(stmt: &Stmt) -> eyre::Result<String> {
+    let mut result = String::new();
+    match stmt {
+        syn_solidity::Stmt::Return(inner_return) => {
+            result.push_str("return ");
+            if let Some(expr) = inner_return.expr.clone() {
+                result.push_str(&fmt_expr(&expr)?);
+            }
+            result.push(';');
+        }
+        syn_solidity::Stmt::VarDecl(stmt_var_decl) => {
+            result.push_str(&fmt_stmt_var_decl(stmt_var_decl)?);
+        }
+        syn_solidity::Stmt::Expr(expr) => {
+            result.push_str(&fmt_expr(&expr.expr)?);
+        }
+        syn_solidity::Stmt::For(for_stmt) => {
+            result.push_str("for (");
+            match &for_stmt.init {
+                ForInitStmt::Expr(expr) => {
+                    result.push_str(&fmt_expr(&expr.expr)?);
+                    result.push(';');
+                }
+                ForInitStmt::VarDecl(var_decl) => {
+                    result.push_str(&fmt_stmt_var_decl(var_decl)?);
+                }
+                ForInitStmt::Empty(_) => {}
+            };
+
+            if let Some(cond) = &for_stmt.cond {
+                result.push_str(&fmt_expr(cond)?);
+            }
+
+            result.push(';');
+
+            if let Some(post) = &for_stmt.post {
+                result.push_str(&fmt_expr(post)?);
+            }
+
+            result.push(')');
+            result.push_str(&fmt_stmt(&for_stmt.body)?);
+        }
+        Stmt::Block(block) => {
+            result.push_str(" {");
+            for stmt in block.stmts.iter() {
+                result.push_str(&fmt_stmt(stmt)?);
+            }
+            result.push(';');
+            result.push_str(" }");
+        }
+        _ => todo!(),
+    }
+
+    Ok(result)
+}
+
+/// To implement `Display` for `StmtVarDecl`.
+pub(crate) fn fmt_stmt_var_decl(
+    StmtVarDecl { declaration, assignment, semi_token }: &StmtVarDecl,
+) -> eyre::Result<String> {
+    let mut result = String::new();
+    if let VarDeclDecl::VarDecl(var_decl) = declaration {
+        result.push_str(&var_decl.to_string());
+    }
+    if let Some(assignment) = assignment {
+        result.push_str(" = ");
+        result.push_str(&fmt_expr(&assignment.1)?);
+    }
+
+    result.push(';');
+
+    Ok(result)
 }

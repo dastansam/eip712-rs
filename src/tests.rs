@@ -9,90 +9,10 @@ use alloy::{
 
 use serde::Serialize;
 
-sol! {
-    #[allow(missing_docs)]
-    #[derive(Serialize)]
-    struct EnableSession {
-        uint8 chainDigestIndex;
-        ChainDigest[] hashesAndChainIds;
-        SessionConf sessionToEnable;
-        bytes permissionEnableSig;
-    }
+sol!("demo.sol");
+sol!("output.sol");
 
-    #[allow(missing_docs)]
-    #[derive(Serialize)]
-    struct ChainDigest {
-        uint64 chainId;
-        bytes32 sessionDigest;
-    }
-
-    #[allow(missing_docs)]
-    #[derive(Serialize)]
-    struct SessionConf {
-        address sessionValidator;
-        bytes sessionValidatorInitData;
-        bytes32 salt;
-        PolicyData[] userOpPolicies;
-        ERC7739Data erc7739Policies;
-        ActionData[] actions;
-    }
-
-
-    #[allow(missing_docs)]
-    #[derive(Serialize)]
-    struct PolicyData {
-        address policy;
-        bytes initData;
-    }
-
-    #[allow(missing_docs)]
-    #[derive(Serialize)]
-    struct ActionData {
-        bytes4 actionTargetSelector;
-        address actionTarget;
-        PolicyData[] actionPolicies;
-    }
-
-    #[allow(missing_docs)]
-    #[derive(Serialize)]
-    struct ERC7739Data {
-        string[] allowedERC7739Content;
-        PolicyData[] erc1271Policies;
-    }
-}
-
-sol! {
-    #[allow(missing_docs)]
-    #[derive(Serialize)]
-    struct SessionEIP712 {
-        address account;
-        address smartSession;
-        uint8 mode;
-        address sessionValidator;
-        bytes32 salt;
-        bytes sessionValidatorInitData;
-        PolicyData[] userOpPolicies;
-        ERC7739Data erc7739Policies;
-        ActionData[] actions;
-    }
-
-    #[allow(missing_docs)]
-    #[derive(Serialize)]
-    struct ChainSpecificEIP712 {
-        uint64 chainId;
-        uint256 nonce;
-    }
-
-    #[allow(missing_docs)]
-    #[derive(Serialize)]
-    struct MultiChainSession {
-        ChainSpecificEIP712[] chainSpecifics;
-        SessionEIP712 session;
-    }
-
-
-}
-
+#[test]
 fn get_policy() {
     let data = PolicyData {
         policy: address!("f022051bEB9E8848e99f47D3eD1397CEEfBF3d4F"),
@@ -109,6 +29,7 @@ fn get_policy() {
     println!("policy data: {:?}", data.eip712_hash_struct());
 }
 
+#[test]
 fn get_action() {
     let action = ActionData {
         actionTarget: address!("7227dcfb0c5ec7a5f539f97b18be261c49687ed6"),
@@ -123,6 +44,7 @@ fn get_action() {
     println!("action data: {:?}", action.eip712_hash_struct());
 }
 
+#[test]
 fn get_erc7739() {
     let erc7739 = ERC7739Data { allowedERC7739Content: vec![], erc1271Policies: vec![] };
 
@@ -130,6 +52,7 @@ fn get_erc7739() {
     println!("erc7739 data: {:?}", erc7739.eip712_hash_struct());
 }
 
+#[test]
 fn get_session() {
     let data = PolicyData {
         policy: address!("f022051bEB9E8848e99f47D3eD1397CEEfBF3d4F"),
@@ -158,6 +81,7 @@ fn get_session() {
     println!("session712 data: {:?}", session.eip712_hash_struct());
 }
 
+#[test]
 fn test_main() {
     // let domain = eip712_domain! {
     //     name: "Uniswap V2",

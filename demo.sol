@@ -40,6 +40,7 @@ struct CustomStructA {
 
 struct CustomStructB {
     string b;
+    uint256[] c;
 }
 
 struct ERC7739Data {
