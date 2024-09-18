@@ -1,0 +1,17 @@
+[package]
+name = "eip712-rs"
+version = "0.1.0"
+edition = "2021"
+description = "EIP-712 Utilities"
+
+[dependencies]
+alloy = { version = "0.3.1", features = ["dyn-abi", "sol-types", "signers", "signer-local"] }
+alloy-primitives = "0.8.2"
+clap = { version = "4.5.16", features = ["derive"] }
+eyre = "0.6.12"
+hex = "0.4.3"
+proc-macro2 = "1.0.86"
+quote = "1.0.37"
+serde = "1.0.210"
+syn = "2.0.77"
+syn-solidity = "0.8.2"
