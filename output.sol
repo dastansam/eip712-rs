@@ -1,50 +1,36 @@
 pragma solidity ^0.8.20;
-import "./demo.sol";
+import "./examples/example-types.sol";
+string constant ACTION_DATA_NOTATION = "ActionData(bytes4 actionTargetSelector,address actionTarget,PolicyData[] actionPolicies)";
+bytes32 constant ACTION_DATA_TYPEHASH = keccak256(bytes(ACTION_DATA_NOTATION));
+string constant CHAIN_DIGEST_NOTATION = "ChainDigest(uint64 chainId,bytes32 sessionDigest)";
+bytes32 constant CHAIN_DIGEST_TYPEHASH = keccak256(
+    bytes(CHAIN_DIGEST_NOTATION)
+);
+string constant CHAIN_SESSION_NOTATION = "ChainSession(uint64 chainId,Session session)";
+bytes32 constant CHAIN_SESSION_TYPEHASH = keccak256(
+    bytes(CHAIN_SESSION_NOTATION)
+);
+string constant ERC7739DATA_NOTATION = "ERC7739Data(string[] allowedERC7739Content,PolicyData[] erc1271Policies)";
+bytes32 constant ERC7739DATA_TYPEHASH = keccak256(bytes(ERC7739DATA_NOTATION));
+string constant ENABLE_SESSION_NOTATION = "EnableSession(uint8 chainDigestIndex,ChainDigest[] hashesAndChainIds,Session sessionToEnable,bytes permissionEnableSig)";
+bytes32 constant ENABLE_SESSION_TYPEHASH = keccak256(
+    bytes(ENABLE_SESSION_NOTATION)
+);
+string constant ENUMERABLE_ACTION_POLICY_NOTATION = "EnumerableActionPolicy(mapping(ActionId => Policy ) actionPolicies,mapping(PermissionId => AssociatedArrayLib.Bytes32Array ) enabledActionIds)";
+bytes32 constant ENUMERABLE_ACTION_POLICY_TYPEHASH = keccak256(
+    bytes(ENUMERABLE_ACTION_POLICY_NOTATION)
+);
+string constant MULTI_CHAIN_SESSION_NOTATION = "MultiChainSession(ChainSession[] sessionsAndChainIds)";
+bytes32 constant MULTI_CHAIN_SESSION_TYPEHASH = keccak256(
+    bytes(MULTI_CHAIN_SESSION_NOTATION)
+);
+string constant POLICY_NOTATION = "Policy(mapping(PermissionId => EnumerableSet.AddressSet ) policyList)";
+bytes32 constant POLICY_TYPEHASH = keccak256(bytes(POLICY_NOTATION));
+string constant POLICY_DATA_NOTATION = "PolicyData(address policy,bytes initData)";
+bytes32 constant POLICY_DATA_TYPEHASH = keccak256(bytes(POLICY_DATA_NOTATION));
+string constant SESSION_NOTATION = "Session(ISessionValidator sessionValidator,bytes sessionValidatorInitData,bytes32 salt,PolicyData[] userOpPolicies,ERC7739Data erc7739Policies,ActionData[] actions)";
+bytes32 constant SESSION_TYPEHASH = keccak256(bytes(SESSION_NOTATION));
 library TypeHashes {
-    string constant ACTION_DATA_NOTATION =
-        "ActionData(bytes4 actionTargetSelector,address actionTarget,PolicyData[] actionPolicies)";
-    bytes32 constant ACTION_DATA_TYPEHASH =
-        keccak256(bytes(ACTION_DATA_NOTATION));
-    string constant CHAIN_DIGEST_NOTATION =
-        "ChainDigest(uint64 chainId,bytes32 sessionDigest)";
-    bytes32 constant CHAIN_DIGEST_TYPEHASH =
-        keccak256(bytes(CHAIN_DIGEST_NOTATION));
-    string constant CHAIN_SPECIFIC_EIP712_NOTATION =
-        "ChainSpecificEIP712(uint64 chainId,uint256 nonce)";
-    bytes32 constant CHAIN_SPECIFIC_EIP712_TYPEHASH =
-        keccak256(bytes(CHAIN_SPECIFIC_EIP712_NOTATION));
-    string constant CUSTOM_STRUCT_A_NOTATION =
-        "CustomStructA(uint256 a,CustomStructB[] bs)";
-    bytes32 constant CUSTOM_STRUCT_A_TYPEHASH =
-        keccak256(bytes(CUSTOM_STRUCT_A_NOTATION));
-    string constant CUSTOM_STRUCT_B_NOTATION =
-        "CustomStructB(string b,uint256[] c)";
-    bytes32 constant CUSTOM_STRUCT_B_TYPEHASH =
-        keccak256(bytes(CUSTOM_STRUCT_B_NOTATION));
-    string constant ERC7739DATA_NOTATION =
-        "ERC7739Data(string[] allowedERC7739Content,PolicyData[] erc1271Policies)";
-    bytes32 constant ERC7739DATA_TYPEHASH =
-        keccak256(bytes(ERC7739DATA_NOTATION));
-    string constant ENABLE_SESSION_NOTATION =
-        "EnableSession(uint8 chainDigestIndex,ChainDigest[] hashesAndChainIds,SessionConf sessionToEnable,bytes permissionEnableSig)";
-    bytes32 constant ENABLE_SESSION_TYPEHASH =
-        keccak256(bytes(ENABLE_SESSION_NOTATION));
-    string constant MULTI_CHAIN_SESSION_NOTATION =
-        "MultiChainSession(ChainSpecificEIP712[] chainSpecifics,SessionEIP712 session)";
-    bytes32 constant MULTI_CHAIN_SESSION_TYPEHASH =
-        keccak256(bytes(MULTI_CHAIN_SESSION_NOTATION));
-    string constant POLICY_DATA_NOTATION =
-        "PolicyData(address policy,bytes initData)";
-    bytes32 constant POLICY_DATA_TYPEHASH =
-        keccak256(bytes(POLICY_DATA_NOTATION));
-    string constant SESSION_CONF_NOTATION =
-        "SessionConf(address sessionValidator,bytes sessionValidatorInitData,bytes32 salt,PolicyData[] userOpPolicies,ERC7739Data erc7739Policies,ActionData[] actions)";
-    bytes32 constant SESSION_CONF_TYPEHASH =
-        keccak256(bytes(SESSION_CONF_NOTATION));
-    string constant SESSION_EIP712_NOTATION =
-        "SessionEIP712(address account,address smartSession,uint8 mode,address sessionValidator,bytes32 salt,bytes sessionValidatorInitData,PolicyData[] userOpPolicies,ERC7739Data erc7739Policies,ActionData[] actions)";
-    bytes32 constant SESSION_EIP712_TYPEHASH =
-        keccak256(bytes(SESSION_EIP712_NOTATION));
     function hashActionData(
         ActionData memory actionData
     ) internal pure returns (bytes32) {
@@ -90,59 +76,25 @@ library TypeHashes {
         }
         return keccak256(abi.encodePacked(hashes));
     }
-    function hashChainSpecificEIP712(
-        ChainSpecificEIP712 memory chainSpecificEIP712
+    function hashChainSession(
+        ChainSession memory chainSession
     ) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
-                    CHAIN_SPECIFIC_EIP712_TYPEHASH,
-                    chainSpecificEIP712.chainId,
-                    chainSpecificEIP712.nonce
+                    CHAIN_SESSION_TYPEHASH,
+                    chainSession.chainId,
+                    hashSession(chainSession.session)
                 )
             );
     }
-    function hashChainSpecificEIP712Array(
-        ChainSpecificEIP712[] memory chainSpecificEIP712Array
+    function hashChainSessionArray(
+        ChainSession[] memory chainSessionArray
     ) internal pure returns (bytes32) {
-        uint256 length = chainSpecificEIP712Array.length;
+        uint256 length = chainSessionArray.length;
         bytes32[] memory hashes = new bytes32[](length);
         for (uint256 i; i < length; i++) {
-            hashes[i] = hashChainSpecificEIP712(chainSpecificEIP712Array[i]);
-        }
-        return keccak256(abi.encodePacked(hashes));
-    }
-    function hashCustomStructA(
-        CustomStructA memory customStructA
-    ) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    CUSTOM_STRUCT_A_TYPEHASH,
-                    customStructA.a,
-                    hashCustomStructBArray(customStructA.bs)
-                )
-            );
-    }
-    function hashCustomStructB(
-        CustomStructB memory customStructB
-    ) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    CUSTOM_STRUCT_B_TYPEHASH,
-                    customStructB.b,
-                    customStructB.c
-                )
-            );
-    }
-    function hashCustomStructBArray(
-        CustomStructB[] memory customStructBArray
-    ) internal pure returns (bytes32) {
-        uint256 length = customStructBArray.length;
-        bytes32[] memory hashes = new bytes32[](length);
-        for (uint256 i; i < length; i++) {
-            hashes[i] = hashCustomStructB(customStructBArray[i]);
+            hashes[i] = hashChainSession(chainSessionArray[i]);
         }
         return keccak256(abi.encodePacked(hashes));
     }
@@ -167,8 +119,20 @@ library TypeHashes {
                     ENABLE_SESSION_TYPEHASH,
                     enableSession.chainDigestIndex,
                     hashChainDigestArray(enableSession.hashesAndChainIds),
-                    enableSession.sessionToEnable,
+                    hashSession(enableSession.sessionToEnable),
                     enableSession.permissionEnableSig
+                )
+            );
+    }
+    function hashEnumerableActionPolicy(
+        EnumerableActionPolicy memory enumerableActionPolicy
+    ) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    ENUMERABLE_ACTION_POLICY_TYPEHASH,
+                    enumerableActionPolicy.actionPolicies,
+                    enumerableActionPolicy.enabledActionIds
                 )
             );
     }
@@ -179,12 +143,12 @@ library TypeHashes {
             keccak256(
                 abi.encode(
                     MULTI_CHAIN_SESSION_TYPEHASH,
-                    hashChainSpecificEIP712Array(
-                        multiChainSession.chainSpecifics
-                    ),
-                    multiChainSession.session
+                    hashChainSessionArray(multiChainSession.sessionsAndChainIds)
                 )
             );
+    }
+    function hashPolicy(Policy memory policy) internal pure returns (bytes32) {
+        return keccak256(abi.encode(POLICY_TYPEHASH, policy.policyList));
     }
     function hashPolicyData(
         PolicyData memory policyData
@@ -208,38 +172,19 @@ library TypeHashes {
         }
         return keccak256(abi.encodePacked(hashes));
     }
-    function hashSessionConf(
-        SessionConf memory sessionConf
+    function hashSession(
+        Session memory session
     ) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
-                    SESSION_CONF_TYPEHASH,
-                    sessionConf.sessionValidator,
-                    sessionConf.sessionValidatorInitData,
-                    sessionConf.salt,
-                    hashPolicyDataArray(sessionConf.userOpPolicies),
-                    sessionConf.erc7739Policies,
-                    hashActionDataArray(sessionConf.actions)
-                )
-            );
-    }
-    function hashSessionEIP712(
-        SessionEIP712 memory sessionEIP712
-    ) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    SESSION_EIP712_TYPEHASH,
-                    sessionEIP712.account,
-                    sessionEIP712.smartSession,
-                    sessionEIP712.mode,
-                    sessionEIP712.sessionValidator,
-                    sessionEIP712.salt,
-                    sessionEIP712.sessionValidatorInitData,
-                    hashPolicyDataArray(sessionEIP712.userOpPolicies),
-                    sessionEIP712.erc7739Policies,
-                    hashActionDataArray(sessionEIP712.actions)
+                    SESSION_TYPEHASH,
+                    hashISessionValidator(session.sessionValidator),
+                    session.sessionValidatorInitData,
+                    session.salt,
+                    hashPolicyDataArray(session.userOpPolicies),
+                    hashERC7739Data(session.erc7739Policies),
+                    hashActionDataArray(session.actions)
                 )
             );
     }

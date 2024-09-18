@@ -9,8 +9,93 @@ use alloy::{
 
 use serde::Serialize;
 
-sol!("demo.sol");
-sol!("output.sol");
+sol!("test.sol");
+
+sol! {
+    #[allow(missing_docs)]
+    #[derive(Serialize)]
+    struct EnableSession {
+        uint8 chainDigestIndex;
+        ChainDigest[] hashesAndChainIds;
+        SessionConf sessionToEnable;
+        bytes permissionEnableSig;
+    }
+
+    #[allow(missing_docs)]
+    #[derive(Serialize)]
+    struct ChainDigest {
+        uint64 chainId;
+        bytes32 sessionDigest;
+    }
+
+    #[allow(missing_docs)]
+    #[derive(Serialize)]
+    struct SessionConf {
+        address sessionValidator;
+        bytes sessionValidatorInitData;
+        bytes32 salt;
+        PolicyData[] userOpPolicies;
+        ERC7739Data erc7739Policies;
+        ActionData[] actions;
+    }
+
+
+    #[allow(missing_docs)]
+    #[derive(Serialize)]
+    struct PolicyData {
+        address policy;
+        bytes initData;
+    }
+
+    #[allow(missing_docs)]
+    #[derive(Serialize)]
+    struct ActionData {
+        bytes4 actionTargetSelector;
+        address actionTarget;
+        PolicyData[] actionPolicies;
+    }
+
+    #[allow(missing_docs)]
+    #[derive(Serialize)]
+    struct ERC7739Data {
+        string[] allowedERC7739Content;
+        PolicyData[] erc1271Policies;
+    }
+}
+
+sol! {
+
+    #[allow(missing_docs)]
+    #[derive(Serialize)]
+    struct SessionEIP712 {
+        address account;
+        address smartSession;
+        uint8 mode;
+        address sessionValidator;
+        bytes32 salt;
+        bytes sessionValidatorInitData;
+        PolicyData[] userOpPolicies;
+        ERC7739Data erc7739Policies;
+        ActionData[] actions;
+    }
+
+    #[allow(missing_docs)]
+    #[derive(Serialize)]
+    struct ChainSpecificEIP712 {
+        uint64 chainId;
+        uint256 nonce;
+    }
+
+    #[allow(missing_docs)]
+    #[derive(Serialize)]
+    struct MultiChainSession {
+        bytes32 permissionId;
+        ChainSpecificEIP712[] chainSpecifics;
+        SessionEIP712 session;
+    }
+
+
+}
 
 #[test]
 fn get_policy() {
@@ -25,8 +110,7 @@ fn get_policy() {
     //
     // let data = PolicyData::abi_decode(&param, true).unwrap();
 
-    println!("policy type: {:?}", data.eip712_type_hash());
-    println!("policy data: {:?}", data.eip712_hash_struct());
+    assert_eq!(data.eip712_type_hash(), Test::POLICY_DATA_TYPEHASH);
 }
 
 #[test]

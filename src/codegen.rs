@@ -189,6 +189,24 @@ impl StructItem {
                             ])),
                         },
                     })
+                } else if field.type_.is_custom() {
+                    Expr::Call(ExprCall {
+                        expr: Box::new(Expr::Ident(SolIdent::new(&format!(
+                            "hash{}",
+                            utils::ensure_first_letter_uppercase(&field.type_.to_string())
+                                .expect("safe to unwrap")
+                        )))),
+                        args: ArgList {
+                            paren_token: Paren::default(),
+                            list: syn_solidity::ArgListImpl::Unnamed(Punctuated::from_iter(vec![
+                                Expr::Member(ExprMember {
+                                    expr: Box::new(Expr::Ident(SolIdent::new(&param_name))),
+                                    dot_token: Dot::default(),
+                                    member: Box::new(Expr::Ident(SolIdent::new(&field.name))),
+                                }),
+                            ])),
+                        },
+                    })
                 } else {
                     Expr::Member(ExprMember {
                         expr: Box::new(Expr::Ident(SolIdent::new(&param_name))),
@@ -333,8 +351,8 @@ impl StructParser {
         // we need to make sure functions are inside library, otherwise they can't be internal
         output.push_str(&format!("pragma solidity ^{};\n", solidity_version));
         output.push_str(&format!("import \"./{}\";\n", input_file));
-        output.push_str("library TypeHashes {\n");
         output.push_str(&self.generate_constants());
+        output.push_str("library TypeHashes {\n");
         output.push_str("\n");
         output.push_str(&self.generate_type_hash_functions());
 
